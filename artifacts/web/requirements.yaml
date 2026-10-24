@@ -1,0 +1,14 @@
+packages:
+  "hls.js": "Required for playing HLS video streams on non-Safari browsers"
+  "framer-motion": "For smooth page transitions and TV-friendly focus/hover animations"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility for merging tailwind classes safely"
+
+images:
+  - path: "artifacts/web/public/images/hero-bg.png"
+    description: "Cinematic dark mesh gradient background with deep purple and ruby red accents, evoking a premium streaming service interface"
+    aspect_ratio: "16:9"
+
+notes:
+  - Using hls.js for video streaming with fallback to native video playback for Safari/AppleTV
+  - Favorites are stored in localStorage

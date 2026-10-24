@@ -1,0 +1,229 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: channels
+    description: IPTV channel operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /channels:
+    get:
+      operationId: listChannels
+      tags: [channels]
+      summary: List IPTV channels
+      description: Returns filtered list of IPTV channels with total count
+      parameters:
+        - name: region
+          in: query
+          schema:
+            type: string
+            default: all
+          description: Filter by region (za-sport, uk, country code, or 'all')
+        - name: country
+          in: query
+          schema:
+            type: string
+          description: Filter by ISO country code (e.g. US, ZA, UK, DE)
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category (e.g. sports, news, entertainment)
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search channels by name
+        - name: onlineOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Only return channels that are currently online
+        - name: quality
+          in: query
+          schema:
+            type: string
+            enum: [4k, fhd, hd, sd]
+          description: Filter by quality group (4k=2160p, fhd=1080p, hd=720p/576p, sd=480p and below)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 300
+            minimum: 1
+            maximum: 2000
+          description: Max results to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Number of results to skip (for pagination)
+      responses:
+        "200":
+          description: Paginated list of channels
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelList"
+  /channels/{channelId}:
+    get:
+      operationId: getChannel
+      tags: [channels]
+      summary: Get a single channel
+      parameters:
+        - name: channelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Channel details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Channel"
+        "404":
+          description: Channel not found
+  /channels/{channelId}/health:
+    get:
+      operationId: getChannelHealth
+      tags: [channels]
+      summary: Get health status for a single channel
+      parameters:
+        - name: channelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Channel health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChannelHealth"
+        "404":
+          description: Channel not found
+  /channels/refresh:
+    post:
+      operationId: refreshChannels
+      tags: [channels]
+      summary: Trigger channel data refresh from iptv-org API
+      responses:
+        "200":
+          description: Refresh started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshResult"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Channel:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        logo:
+          type: ["string", "null"]
+        country:
+          type: string
+        region:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        streamUrl:
+          type: ["string", "null"]
+        streamUrls:
+          type: array
+          items:
+            type: string
+        quality:
+          type: ["string", "null"]
+        isOnline:
+          type: boolean
+        lastChecked:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - id
+        - name
+        - country
+        - region
+        - categories
+        - isOnline
+        - streamUrls
+    ChannelList:
+      type: object
+      properties:
+        channels:
+          type: array
+          items:
+            $ref: "#/components/schemas/Channel"
+        total:
+          type: integer
+          description: Total count matching the filters (before limit/offset)
+      required:
+        - channels
+        - total
+    ChannelHealth:
+      type: object
+      properties:
+        channelId:
+          type: string
+        isOnline:
+          type: boolean
+        streamUrl:
+          type: ["string", "null"]
+        quality:
+          type: ["string", "null"]
+        lastChecked:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - channelId
+        - isOnline
+    RefreshResult:
+      type: object
+      properties:
+        message:
+          type: string
+        channelsUpdated:
+          type: integer
+      required:
+        - message
+        - channelsUpdated

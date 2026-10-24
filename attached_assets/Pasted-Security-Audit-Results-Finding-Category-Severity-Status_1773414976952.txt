@@ -1,0 +1,22 @@
+Security Audit Results
+#	Finding	Category	Severity	Status	What was done
+1	cors() wildcard on ALL endpoints — any site could make API calls	CORS	🔴 High	Fixed	/api/proxy/* keeps wildcard (needed for HLS). All other /api/* routes now restricted to *.replit.dev origins only
+2	No security headers at all (no Helmet)	Headers	🟠 Medium	Fixed	Helmet added: CSP, X-Content-Type-Options, Strict-Transport-Security (HSTS 1yr), Referrer-Policy: no-referrer, X-Frame-Options, X-XSS-Protection, X-DNS-Prefetch-Control
+3	X-Powered-By: Express leaks server software	Fingerprinting	🟡 Low	Fixed	app.disable("x-powered-by") — header gone from all responses
+4	No rate limiting anywhere — scrapers, DDoS, proxy amplification	Abuse	🔴 High	Fixed	3-tier rate limiter: proxy 300 req/min (HLS-safe), data API 120 req/min, admin 10 req/min. Skipped in dev so local work is unaffected
+5	POST /channels/refresh publicly callable — triggers expensive DB sync	Admin Auth	🔴 High	Fixed	Now requires X-Admin-Secret header matching ADMIN_SECRET env var. Returns 403 if secret not configured or wrong
+6	POST /channels/enrich-logos publicly callable — triggers bulk logo fetch	Admin Auth	🔴 High	Fixed	Same admin guard applied
+7	GET /channels/sync-community/status leaks internal sync state	Admin Auth	🟠 Medium	Fixed	Same admin guard applied
+8	POST /epg/sync takes unvalidated country from user body	Input Validation	🟠 Medium	Fixed	Country is now validated against the known GUIDE_BY_COUNTRY list, capped at 3 chars, admin-guarded
+9	Proxy had only GCP metadata block — AWS/Azure/Alibaba IMDS exposed	SSRF	🟡 Low	Fixed	Added: AWS 169.254.169.254, AWS IPv6 fd00:ec2::254, Azure metadata.azure.com, Alibaba 100.100.100.200
+10	Proxy segment pump had no response size cap — memory exhaustion	DoS	🟠 Medium	Fixed	Segment stream aborts and disconnects after 64 MB — well above any real TS segment (typically 1-4 MB)
+11	Playlist proxy had no size cap — attacker could stream GB files as playlists	DoS	🟠 Medium	Fixed	Playlist response rejected at 1 MB (real playlists are under 100 KB)
+12	No global error handler — Express could leak stack traces on unhandled errors	Info Leak	🟡 Low	Fixed	Global error handler added: 5xx errors return generic "Internal server error" only; 4xx still show safe message
+13	express.json() had no body size limit	DoS	🟡 Low	Fixed	Explicit 64 KB limit on both JSON and URL-encoded body parsers
+Verified live (curl tested):
+
+GET /api/healthz → 200 with all 10 Helmet headers present ✓
+POST /api/channels/refresh (no secret) → 403 Forbidden ✓
+GET /api/proxy/playlist?url=http://169.254.169.254/… → 403 SSRF blocked ✓
+App loads and plays streams normally ✓
+To enable admin endpoints, set ADMIN_SECRET=<your-secret> in the environment and pass X-Admin-Secret: <your-secret> in requests.
